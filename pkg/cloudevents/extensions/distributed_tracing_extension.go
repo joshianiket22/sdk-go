@@ -38,9 +38,11 @@ func SetTraceState(tracestate string) {
 
 // AddTracingAttributes adds the tracing attributes traceparent and tracestate to the CloudEvents context.
 func AddTracingAttributes(ec EventTracer) error {
-	for k, v := range attributes {
-		if err := ec.SetExtension(k, v); err != nil {
-			return err
+	if _, ok := attributes[traceParentName]; ok {
+		for k, v := range attributes {
+			if err := ec.SetExtension(k, v); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
