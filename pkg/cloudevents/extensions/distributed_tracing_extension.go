@@ -1,45 +1,33 @@
 package extensions
 
 import (
-	"fmt"
+	"reflect"
+	"strings"
 )
 
-// EventTracer interface allows setting extension for event context.
+// EventTracer interface allows setting extension for cloudevents context.
 type EventTracer interface {
 	SetExtension(k string, v interface{}) error
 }
 
-const (
-	traceParentName = "traceparent"
-	traceStateName  = "tracestate"
-)
-
-var attributes = make(map[string]interface{})
-
-// TraceParent returns traceparent attribute value
-func TraceParent() string {
-	return fmt.Sprintf("%v", attributes[traceParentName])
+// DistributedTracingExtension represents the extension for cloudevents context
+type DistributedTracingExtension struct {
+	TraceParent string `json:"traceparent"`
+	TraceState  string `json:"tracestate"`
 }
 
-// SetTraceParent sets traceparent attribute value.
-func SetTraceParent(traceparent string) {
-	attributes[traceParentName] = traceparent
-}
+// AddTracingAttributes adds the tracing attributes traceparent and tracestate to the cloudevents context
+func (d DistributedTracingExtension) AddTracingAttributes(ec EventTracer) error {
+	if d.TraceParent != "" {
+		value := reflect.ValueOf(d)
+		typeOf := value.Type()
 
-// TraceState returns tracestate attribute value
-func TraceState() string {
-	return fmt.Sprintf("%v", attributes[traceStateName])
-}
-
-// SetTraceState sets tracestate attribute value.
-func SetTraceState(tracestate string) {
-	attributes[traceStateName] = tracestate
-}
-
-// AddTracingAttributes adds the tracing attributes traceparent and tracestate to the CloudEvents context.
-func AddTracingAttributes(ec EventTracer) error {
-	if _, ok := attributes[traceParentName]; ok {
-		for k, v := range attributes {
+		for i := 0; i < value.NumField(); i++ {
+			k := strings.ToLower(typeOf.Field(i).Name)
+			v := value.Field(i).Interface()
+			if k == "tracestate" && v == "" {
+				continue
+			}
 			if err := ec.SetExtension(k, v); err != nil {
 				return err
 			}
